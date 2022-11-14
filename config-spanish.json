@@ -1,0 +1,65 @@
+{
+	"telegram-api-key": "WRITE-TELEGRAM-API-KEY-HERE",
+	"riot-lol-api-key": "WRITE-RIOT-API-KEY-HERE",
+	"riot-lol-message": {
+		"single": {
+			"win-single": "[{mode}] 🏆 <u>VICTORIA</u> 🏆\n<b>{sumoner_name}</b> (<i>{champion}</i>) ha ganado en {game_duration_min} minutos (KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>)",
+			"win-single-ranked": "[{mode}] 🏆 <u>VICTORIA</u> 🏆 <i>{tier} {rank} {lp}LP</i> {region}\n<b>{sumoner_name}</b> (<i>{champion}</i>) ha ganado en {game_duration_min} minutos (KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>)",
+			"loss-single": "[{mode}] 💀 <u>DERROTA</u> 💀\n<b>{sumoner_name}</b> (<i>{champion}</i>) ha perdido en {game_duration_min} minutos (KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>)",
+			"loss-single-ranked": "[{mode}] 💀 <u>DERROTA</u> 💀 <i>{tier} {rank} {lp}LP</i> {region}\n<b>{sumoner_name}</b> (<i>{champion}</i>) ha perdido en {game_duration_min} minutos (KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>)"
+		},
+		"multiple": {
+			"win-multiple": "[{mode}] 🏆 <u>VICTORIA</u> 🏆\n<b>{sumoner_names}</b> han ganado en {game_duration_min} minutos\n\n{singles}",
+			"win-single": "- <b>{sumoner_name}</b> (<i>{champion}</i>) | KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>\n\n",
+			"win-single-ranked": "- <b>{sumoner_name}</b> (<i>{champion}</i>) | <i>{tier} {rank} {lp}LP</i> | KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>\n\n",
+			"loss-multiple": "[{mode}] 💀 <u>DERROTA</u> 💀\n<b>{sumoner_names}</b> han perdido en {game_duration_min} minutos\n\n{singles}",
+			"loss-single": "- <b>{sumoner_name}</b> (<i>{champion}</i>) | KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>\n\n",
+			"loss-single-ranked": "- <b>{sumoner_name}</b> (<i>{champion}</i>) | <i>{tier} {rank} {lp}LP</i> | KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>\n\n"
+		}
+	},
+	"riot-tft-api-key": "WRITE-RIOT-API-KEY-HERE",
+	"riot-tft-message": {
+		"single": {
+			"top-single": "[{mode}] <b>{sumoner_name}</b> ha terminado <u>TOP {top}</u> 🏆",
+			"top-single-ranked": "[{mode}] <b>{sumoner_name}</b> ha terminado <u>TOP {top}</u> 🏆 <i>{tier} {rank} {lp}LP</i> {region}",
+			"bottom-single": "[{mode}] <b>{sumoner_name}</b> ha terminado <u>TOP {top}</u> 💀\n",
+			"bottom-single-ranked": "[{mode}] <b>{sumoner_name}</b> ha terminado <u>TOP {top}</u> 💀 <i>{tier} {rank} {lp}LP</i> {region}"
+		},
+		"duo": {
+			"top-duo": "[{mode}] <b>{sumoner_names}</b> han terminado <u>TOP {top}</u> 🏆\n{singles}",
+			"top-single": "",
+			"top-single-ranked": "- <b>{sumoner_name}</b> | <i>{tier} {rank} {lp}LP</i>",
+			"bottom-duo": "[{mode}] <b>{sumoner_names}</b> han terminado <u>TOP {top}</u> 💀\n{singles}",
+			"bottom-single": "",
+			"bottom-single-ranked": "- <b>{sumoner_name}</b> | <i>{tier} {rank} {lp}LP</i>"
+		}
+	},
+	"trackers": [
+		{
+			"telegram-chat": 42,
+			"riot-lol-players": {
+				"euw": [
+					"summoner_name_1",
+					"summoner_name_2"
+				]
+			},
+			"riot-tft-players": {
+				"euw": [
+					"summoner_name_2",
+					"summoner_name_3"
+				]
+			}
+		},
+		{
+			"telegram-chat": -42,
+			"riot-lol-players": {
+				"euw": [
+					"summoner_name_4"
+				],
+				"na": [
+					"summoner_name_5"
+				]
+			}
+		}
+	]
+}

@@ -1,0 +1,21 @@
+[package]
+name = "telegram-riot"
+version = "0.1.0"
+edition = "2021"
+description = "LOL and TFT tracker for Telegram"
+license = "MIT"
+repository = "https://github.com/GuillerLT/telegram-riot.git"
+readme = "README.md"
+keywords = ["riot", "telegram", "lol", "tft", "tracker", "bot"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+tokio = { version = "1", features = ["macros", "time"] }
+tracing = { version = "0" }
+tracing-subscriber = { version = "0" }
+teloxide = { version = "0", features = ["rustls", "throttle"] }
+riven = { version = "2", features = ["rustls-tls"] }
+sqlx = { version = "0", features = ["runtime-tokio-rustls", "sqlite"] }
+serde = { version = "1" }
+serde_json = { version = "1" }
+chrono = { version = "0" }
