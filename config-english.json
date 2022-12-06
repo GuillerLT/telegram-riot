@@ -3,16 +3,16 @@
 	"riot-lol-api-key": "WRITE-RIOT-API-KEY-HERE",
 	"riot-lol-message": {
 		"single": {
-			"win-single": "[{mode}] 🏆 <u>VICTORIA</u> 🏆\n<b>{sumoner_name}</b> (<i>{champion}</i>) won in {game_duration_min} minutes (KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>)",
-			"win-single-ranked": "[{mode}] 🏆 <u>VICTORIA</u> 🏆 <i>{tier} {rank} {lp}LP</i> {region}\n<b>{sumoner_name}</b> (<i>{champion}</i>) won in {game_duration_min} minutes (KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>)",
-			"loss-single": "[{mode}] 💀 <u>DERROTA</u> 💀\n<b>{sumoner_name}</b> (<i>{champion}</i>) lost in {game_duration_min} minutes (KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>)",
-			"loss-single-ranked": "[{mode}] 💀 <u>DERROTA</u> 💀 <i>{tier} {rank} {lp}LP</i> {region}\n<b>{sumoner_name}</b> (<i>{champion}</i>) lost in {game_duration_min} minutes (KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>)"
+			"win-single": "[{mode}] 🏆 <u>VICTORY</u> 🏆\n<b>{sumoner_name}</b> (<i>{champion}</i>) won in {game_duration_min} minutes (KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>)",
+			"win-single-ranked": "[{mode}] 🏆 <u>VICTORY</u> 🏆 <i>{tier} {rank} {lp}LP</i> {region}\n<b>{sumoner_name}</b> (<i>{champion}</i>) won in {game_duration_min} minutes (KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>)",
+			"loss-single": "[{mode}] 💀 <u>DEFEAT</u> 💀\n<b>{sumoner_name}</b> (<i>{champion}</i>) lost in {game_duration_min} minutes (KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>)",
+			"loss-single-ranked": "[{mode}] 💀 <u>DEFEAT</u> 💀 <i>{tier} {rank} {lp}LP</i> {region}\n<b>{sumoner_name}</b> (<i>{champion}</i>) lost in {game_duration_min} minutes (KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>)"
 		},
 		"multiple": {
-			"win-multiple": "[{mode}] 🏆 <u>VICTORIA</u> 🏆\n<b>{sumoner_names}</b> won in {game_duration_min} minutes\n\n{singles}",
+			"win-multiple": "[{mode}] 🏆 <u>VICTORY</u> 🏆\n<b>{sumoner_names}</b> won in {game_duration_min} minutes\n\n{singles}",
 			"win-single": "- <b>{sumoner_name}</b> (<i>{champion}</i>) | KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>\n\n",
 			"win-single-ranked": "- <b>{sumoner_name}</b> (<i>{champion}</i>) | <i>{tier} {rank} {lp}LP</i> | KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>\n\n",
-			"loss-multiple": "[{mode}] 💀 <u>DERROTA</u> 💀\n<b>{sumoner_names}</b> lost in {game_duration_min} minutes\n\n{singles}",
+			"loss-multiple": "[{mode}] 💀 <u>DEFEAT</u> 💀\n<b>{sumoner_names}</b> lost in {game_duration_min} minutes\n\n{singles}",
 			"loss-single": "- <b>{sumoner_name}</b> (<i>{champion}</i>) | KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>\n\n",
 			"loss-single-ranked": "- <b>{sumoner_name}</b> (<i>{champion}</i>) | <i>{tier} {rank} {lp}LP</i> | KDA: <i>{kills}/{deaths}/{assists}</i> | DMG: <i>{damage_percentage}%</i>\n\n"
 		}
