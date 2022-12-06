@@ -34,7 +34,7 @@ pub async fn get_player(api: &Api, platform: Platform, name: &str) -> Result<Opt
 				})
 				.map(|player| {
 					// TODO: inspect // result_option_inspect #91345 // https://github.com/rust-lang/rust/issues/91345
-					tracing::info!(
+					tracing::debug!(
 						platform = platform.as_region_str(),
 						player = player.name,
 						puuid = player.puuid,
@@ -69,9 +69,19 @@ pub async fn get_last_game_ids(
 				player = player.name,
 				error = err.source_reqwest_error().to_string(),
 				response = err.status_code().map(|err| err.to_string()),
-				"Error getting Riot LOL game IDs"
+				"Error getting Riot LOL game identifiers"
 			);
 			err
+		})
+		.map(|game_ids| {
+			// TODO: inspect // result_option_inspect #91345 // https://github.com/rust-lang/rust/issues/91345
+			tracing::trace!(
+				platform = platform.as_region_str(),
+				player = player.name,
+				n = game_ids.len(),
+				"Success downloading Riot LOL game identifiers"
+			);
+			game_ids
 		})
 }
 
@@ -94,9 +104,27 @@ pub async fn get_game(api: &Api, platform: Platform, game_id: &str) -> Result<Op
 			// TODO: inspect // result_option_inspect #91345 // https://github.com/rust-lang/rust/issues/91345
 			game.map(|game| {
 				// TODO: inspect // result_option_inspect #91345 // https://github.com/rust-lang/rust/issues/91345
-				tracing::info!(
+
+				let datetime_to_string = |datetime: chrono::naive::NaiveDateTime| {
+					datetime.format("%y-%m-%dT%H:%M:%S").to_string()
+				};
+
+				let start = chrono::naive::NaiveDateTime::from_timestamp_millis(
+					game.info.game_start_timestamp,
+				)
+				.map(datetime_to_string);
+
+				let end = game
+					.info
+					.game_end_timestamp
+					.and_then(chrono::naive::NaiveDateTime::from_timestamp_millis)
+					.map(datetime_to_string);
+
+				tracing::debug!(
 					platform = platform.as_region_str(),
 					game = game.metadata.match_id,
+					start,
+					end,
 					"Success getting Riot LOL game"
 				);
 				game

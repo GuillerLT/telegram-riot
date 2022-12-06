@@ -25,9 +25,14 @@ pub fn are_same_queue(queue_type: &QueueType, queue: Queue) -> bool {
 	}
 }
 
-pub fn are_same_queue_id(queue_type: &QueueType, queue: i32) -> bool {
-	queue
-		.try_into()
-		.map(|queue| are_same_queue(queue_type, Queue(queue)))
-		.unwrap_or(false)
+pub fn are_same_queue_id(queue_type: &QueueType, queue_id: i32) -> bool {
+	u16::try_from(queue_id)
+		.map(|queue_id| are_same_queue(queue_type, Queue(queue_id)))
+		.unwrap_or_else(|err| {
+			tracing::error!(
+				error = err.to_string(),
+				"Error converting to queue from identifier"
+			);
+			false
+		})
 }

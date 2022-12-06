@@ -18,6 +18,10 @@ async fn create_tables(pool: &SqlitePool, product: &str) -> Result<()> {
 	.map_err(|err| {
 		tracing::error!(product, error = err.to_string(), "Error creating DB table (Players)");
 		err
+	})
+	.map(|result| {
+		tracing::trace!(product, "Success creating DB table (Players)");
+		result
 	})?;
 
 	sqlx::query(
@@ -28,6 +32,10 @@ async fn create_tables(pool: &SqlitePool, product: &str) -> Result<()> {
 	.map_err(|err| {
 		tracing::error!(product, error = err.to_string(), "Error creating DB table (Games)");
 		err
+	})
+	.map(|result| {
+		tracing::trace!(product, "Success creating DB table (Games)");
+		result
 	})?;
 
 	sqlx::query(
@@ -38,6 +46,10 @@ async fn create_tables(pool: &SqlitePool, product: &str) -> Result<()> {
 	.map_err(|err| {
 		tracing::error!(product, error = err.to_string(), "Error creating DB table (GameResults)");
 		err
+	})
+	.map(|result| {
+		tracing::trace!(product, "Success creating DB table (GameResults)");
+		result
 	})?;
 
 	transaction.commit().await
@@ -75,7 +87,7 @@ async fn insert_game(
 	game_id: &str,
 	platform: Platform,
 	queue: i32,
-	date: i64,
+	timestamp: i64,
 	player_ids_results_leagues: &[(&str, i32, Option<(Tier, Rank, i32)>)],
 ) -> Result<()> {
 	let mut transaction = pool.begin().await?;
@@ -89,11 +101,8 @@ async fn insert_game(
 	.bind(&platform_string)
 	.bind(queue)
 	.bind(
-		chrono::NaiveDateTime::from_timestamp_opt(
-			date / 1000,
-			(date % 1000).try_into().unwrap_or_default(),
-		)
-		.map(|date| date.format("%Y-%m-%dT%H:%M:%S").to_string()),
+		chrono::naive::NaiveDateTime::from_timestamp_millis(timestamp)
+		.map(|datetime| datetime.format("%Y-%m-%dT%H:%M:%S").to_string()),
 	)
 	.execute(&mut transaction)
 	.await
@@ -106,6 +115,16 @@ async fn insert_game(
 			"Error writing DB (Games)"
 		);
 		err
+	})
+	.map(|result| {
+		tracing::trace!(
+			product,
+			platform = platform.as_region_str(),
+			game_id,
+			rows = result.rows_affected(),
+			"Success writing DB (Games)"
+		);
+		result
 	})?;
 
 	if !player_ids_results_leagues.is_empty() {
@@ -138,6 +157,16 @@ async fn insert_game(
 				"Error writing DB (GameResults)"
 			);
 			err
+		})
+		.map(|result| {
+			tracing::trace!(
+				product,
+				platform = platform.as_region_str(),
+				game_id,
+				rows = result.rows_affected(),
+				"Success writing DB (GameResults)"
+			);
+			result
 		})?;
 	}
 
@@ -162,6 +191,8 @@ async fn insert_players(
 		.map_err(|err| {
 			tracing::error!(
 				product,
+				id,
+				name,
 				error = err.to_string(),
 				"Error writing DB (Players)"
 			);
@@ -186,6 +217,14 @@ async fn insert_players(
 				"Error writing DB (Players)"
 			);
 			err
+		})
+		.map(|result| {
+			tracing::trace!(
+				product,
+				rows = result.rows_affected(),
+				"Success writing DB (Players)"
+			);
+			result
 		})?;
 	}
 

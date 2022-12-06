@@ -7,7 +7,15 @@ mod message;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-	tracing_subscriber::fmt::init();
+	tracing_subscriber::fmt::fmt()
+		.with_env_filter(tracing_subscriber::filter::EnvFilter::from_default_env())
+		.with_timer(tracing_subscriber::fmt::time::UtcTime::new(
+			time::format_description::parse(
+				"[year repr:last_two]-[month]-[day]T[hour]:[minute]:[second]",
+			)
+			.unwrap(),
+		))
+		.init();
 
 	// Load configuration from config.json
 	let config: config::Config =
@@ -53,6 +61,8 @@ async fn main() {
 		}
 	}
 	let telegram_chats = Vec::from_iter(telegram_chats);
+	let lol_names_platforms_telegram_chats = lol_names_platforms_telegram_chats;
+	let tft_names_platforms_telegram_chats = tft_names_platforms_telegram_chats;
 
 	// RIOT API instances
 	let lol_api = std::sync::Arc::new(api::riot::Api::new(config.riot_lol_api_key));
@@ -60,41 +70,41 @@ async fn main() {
 
 	// LOL player getter task
 	let lol_get_players = {
-		let lol_api = lol_api.clone();
+		let api = lol_api.clone();
 		async move {
-			let mut lol_players_platforms_telegram_chats = Vec::default();
-			let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
+			let mut players_platforms_telegram_chats = Vec::default();
+			let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(2));
 			interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 			for ((name, platform), telegram_chats) in lol_names_platforms_telegram_chats {
 				interval.tick().await;
-				let player = api::riot::lol::get_player(&lol_api, platform, &name)
+				let player = api::riot::lol::get_player(&api, platform, &name)
 					.await
 					.unwrap()
 					.unwrap();
 				let telegram_chats = Vec::from_iter(telegram_chats);
-				lol_players_platforms_telegram_chats.push(((player, platform), telegram_chats));
+				players_platforms_telegram_chats.push(((player, platform), telegram_chats));
 			}
-			lol_players_platforms_telegram_chats
+			players_platforms_telegram_chats
 		}
 	};
 
 	// TFT player getter task
 	let tft_get_players = {
-		let tft_api = tft_api.clone();
+		let api = tft_api.clone();
 		async move {
-			let mut tft_players_platforms_telegram_chats = Vec::default();
-			let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
+			let mut players_platforms_telegram_chats = Vec::default();
+			let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(2));
 			interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 			for ((name, platform), telegram_chats) in tft_names_platforms_telegram_chats {
 				interval.tick().await;
-				let player = api::riot::tft::get_player(&tft_api, platform, &name)
+				let player = api::riot::tft::get_player(&api, platform, &name)
 					.await
 					.unwrap()
 					.unwrap();
 				let telegram_chats = Vec::from_iter(telegram_chats);
-				tft_players_platforms_telegram_chats.push(((player, platform), telegram_chats));
+				players_platforms_telegram_chats.push(((player, platform), telegram_chats));
 			}
-			tft_players_platforms_telegram_chats
+			players_platforms_telegram_chats
 		}
 	};
 
@@ -110,263 +120,238 @@ async fn main() {
 	.unwrap();
 
 	// LOL game identifiers getter task
-	let (lol_game_ids_sender, mut lol_game_ids_receiver) = tokio::sync::mpsc::channel(64);
+	let (lol_game_ids_sender, mut lol_game_ids_receiver) = tokio::sync::mpsc::channel(128);
 	let lol_get_game_ids = async {
-		let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(2));
+		let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(4));
 		interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 		for ((player, platform), ..) in lol_players_platforms_telegram_chats.iter().cycle() {
 			interval.tick().await;
-			let Ok(lol_game_ids) =
-					api::riot::lol::get_last_game_ids(&lol_api, *platform, player).await
-			else {
-				continue
-			};
+			let game_ids = api::riot::lol::get_last_game_ids(&lol_api, *platform, player)
+				.await
+				.unwrap_or_default();
 
-			for lol_game_id in lol_game_ids {
+			for game_id in game_ids {
 				lol_game_ids_sender
-					.send((lol_game_id, *platform))
+					.send((game_id, *platform))
 					.await
-					.unwrap_or_default();
+					.unwrap_or_else(|err| {
+						tracing::error!(
+							error = err.to_string(),
+							"Error sending LOL game identifier to channel"
+						)
+					});
 			}
+			tokio::task::yield_now().await;
 		}
 	};
 
 	// TFT game identifiers getter task
-	let (tft_game_ids_sender, mut tft_game_ids_receiver) = tokio::sync::mpsc::channel(64);
+	let (tft_game_ids_sender, mut tft_game_ids_receiver) = tokio::sync::mpsc::channel(128);
 	let tft_get_game_ids = async {
-		let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(2));
+		let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(4));
 		interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 		for ((player, platform), ..) in tft_players_platforms_telegram_chats.iter().cycle() {
 			interval.tick().await;
-			let Ok(tft_game_ids) =
-					api::riot::tft::get_last_game_ids(&tft_api, *platform, player).await
-			else {
-				continue
-			};
+			let game_ids = api::riot::tft::get_last_game_ids(&tft_api, *platform, player)
+				.await
+				.unwrap_or_default();
 
-			for tft_game_id in tft_game_ids {
+			for game_id in game_ids {
 				tft_game_ids_sender
-					.send((tft_game_id, *platform))
+					.send((game_id, *platform))
 					.await
-					.unwrap_or_default();
+					.unwrap_or_else(|err| {
+						tracing::error!(
+							error = err.to_string(),
+							"Error sending TFT game identifier to channel"
+						)
+					});
 			}
-		}
-	};
-
-	// LOL game getter task
-	let (lol_games_sender, mut lol_games_receiver) = tokio::sync::mpsc::unbounded_channel();
-	let lol_get_games = async {
-		let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
-		interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-		while let Some((lol_game_id, riot_platform)) = lol_game_ids_receiver.recv().await {
-			if db::riot::lol::contains_game(&db_pool, &lol_game_id, riot_platform)
-				.await
-				.unwrap_or(true)
-			{
-				continue;
-			}
-
-			interval.tick().await;
-			let Ok(Some(lol_game)) =
-					api::riot::lol::get_game(&lol_api, riot_platform, &lol_game_id).await
-			else {
-				continue
-			};
-
-			let lol_players_participants_telegram_chats = lol_game
-				.info
-				.participants
-				.iter()
-				.filter_map(|lol_participant| {
-					lol_players_platforms_telegram_chats
-						.iter()
-						.find(|((lol_player, ..), ..)| lol_player.puuid == lol_participant.puuid)
-						.map(|((lol_player, ..), telegram_chats)| {
-							(lol_player, lol_participant, telegram_chats)
-						})
-				});
-
-			let mut lol_players_participants_leagues_telegram_chats = Vec::default();
-			for (lol_player, lol_participant, telegram_chats) in
-				lol_players_participants_telegram_chats
-			{
-				interval.tick().await;
-				let lol_leagues = api::riot::lol::get_leagues(&lol_api, riot_platform, lol_player)
-					.await
-					.unwrap_or_default();
-
-				let lol_league = lol_leagues.into_iter().find(|lol_league| {
-					api::riot::are_same_queue(&lol_league.queue_type, lol_game.info.queue_id)
-				});
-				lol_players_participants_leagues_telegram_chats.push((
-					lol_player,
-					lol_participant,
-					lol_league,
-					telegram_chats,
-				));
-			}
-
-			if db::riot::lol::insert_game(
-				&db_pool,
-				&lol_game,
-				riot_platform,
-				&lol_players_participants_leagues_telegram_chats,
-			)
-			.await
-			.is_err()
-			{
-				continue;
-			}
-
-			for telegram_chat in telegram_chats.iter().copied() {
-				let lol_players_participants_leagues =
-					lol_players_participants_leagues_telegram_chats
-						.iter()
-						.filter(|(.., telegram_chats)| telegram_chats.contains(&telegram_chat))
-						.map(|(lol_player, lol_participant, lol_league, ..)| {
-							(
-								(*lol_player).clone(),
-								(*lol_participant).clone(),
-								lol_league.clone(),
-							)
-						})
-						.collect::<Vec<_>>();
-				lol_games_sender
-					.send((
-						telegram_chat,
-						lol_game.clone(),
-						riot_platform,
-						lol_players_participants_leagues,
-					))
-					.unwrap_or_default();
-			}
-		}
-	};
-
-	// TFT game getter task
-	let (tft_games_sender, mut tft_games_receiver) = tokio::sync::mpsc::unbounded_channel();
-	let tft_get_games = async {
-		let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
-		interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
-		while let Some((tft_game_id, riot_platform)) = tft_game_ids_receiver.recv().await {
-			if db::riot::tft::contains_game(&db_pool, &tft_game_id, riot_platform)
-				.await
-				.unwrap_or(true)
-			{
-				continue;
-			}
-
-			interval.tick().await;
-			let Ok(Some(tft_game)) =
-					api::riot::tft::get_game(&tft_api, riot_platform, &tft_game_id).await
-			else {
-				continue
-			};
-
-			let tft_players_participants_telegram_chats = tft_game
-				.info
-				.participants
-				.iter()
-				.filter_map(|tft_participant| {
-					tft_players_platforms_telegram_chats
-						.iter()
-						.find(|((tft_player, ..), ..)| tft_player.puuid == tft_participant.puuid)
-						.map(|((tft_player, ..), telegram_chats)| {
-							(tft_player, tft_participant, telegram_chats)
-						})
-				});
-
-			let mut tft_players_participants_leagues_telegram_chats = Vec::default();
-			for (tft_player, tft_participant, telegram_chats) in
-				tft_players_participants_telegram_chats
-			{
-				interval.tick().await;
-				let tft_leagues = api::riot::tft::get_leagues(&tft_api, riot_platform, tft_player)
-					.await
-					.unwrap_or_default();
-
-				let tft_league = tft_leagues.into_iter().find(|tft_league| {
-					api::riot::are_same_queue_id(&tft_league.queue_type, tft_game.info.queue_id)
-				});
-				tft_players_participants_leagues_telegram_chats.push((
-					tft_player,
-					tft_participant,
-					tft_league,
-					telegram_chats,
-				));
-			}
-
-			if db::riot::tft::insert_game(
-				&db_pool,
-				&tft_game,
-				riot_platform,
-				&tft_players_participants_leagues_telegram_chats,
-			)
-			.await
-			.is_err()
-			{
-				continue;
-			}
-
-			for telegram_chat in telegram_chats.iter().copied() {
-				let tft_players_participants_leagues =
-					tft_players_participants_leagues_telegram_chats
-						.iter()
-						.filter(|(.., telegram_chats)| telegram_chats.contains(&telegram_chat))
-						.map(|(tft_player, tft_participant, tft_league, ..)| {
-							(
-								(*tft_player).clone(),
-								(*tft_participant).clone(),
-								tft_league.clone(),
-							)
-						})
-						.collect::<Vec<_>>();
-				tft_games_sender
-					.send((
-						telegram_chat,
-						tft_game.clone(),
-						riot_platform,
-						tft_players_participants_leagues,
-					))
-					.unwrap_or_default();
-			}
+			tokio::task::yield_now().await;
 		}
 	};
 
 	let (messages_sender, mut messages_receiver) = tokio::sync::mpsc::unbounded_channel();
 
-	// LOL message generator task
-	let lol_generate_messages = async {
-		while let Some((telegram_chat, lol_game, riot_platform, lol_players_participants_leagues)) =
-			lol_games_receiver.recv().await
-		{
-			let messages = message::riot::lol::generate_message(
-				&lol_game,
-				riot_platform,
-				&lol_players_participants_leagues,
-				&config.riot_lol_message,
-			);
-			messages_sender
-				.send((telegram_chat, messages))
-				.unwrap_or_default();
+	// LOL game getter task
+	let lol_get_games = async {
+		let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
+		interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+		while let Some((game_id, platform)) = lol_game_ids_receiver.recv().await {
+			if db::riot::lol::contains_game(&db_pool, &game_id, platform)
+				.await
+				.unwrap_or(true)
+			{
+				continue;
+			}
+
+			interval.tick().await;
+			let Ok(Some(game)) =
+					api::riot::lol::get_game(&lol_api, platform, &game_id).await
+			else {
+				continue
+			};
+
+			let players_participants_telegram_chats =
+				game.info.participants.iter().filter_map(|participant| {
+					lol_players_platforms_telegram_chats
+						.iter()
+						.find(|((player, ..), ..)| player.puuid == participant.puuid)
+						.map(|((player, ..), telegram_chats)| (player, participant, telegram_chats))
+				});
+
+			let mut players_participants_leagues_telegram_chats = Vec::default();
+			for (player, participant, telegram_chats) in players_participants_telegram_chats {
+				interval.tick().await;
+				let league = api::riot::lol::get_leagues(&lol_api, platform, player)
+					.await
+					.unwrap_or_default()
+					.into_iter()
+					.find(|league| {
+						api::riot::are_same_queue(&league.queue_type, game.info.queue_id)
+					});
+
+				players_participants_leagues_telegram_chats.push((
+					player,
+					participant,
+					league,
+					telegram_chats,
+				));
+			}
+			let players_participants_leagues_telegram_chats =
+				players_participants_leagues_telegram_chats;
+
+			if db::riot::lol::insert_game(
+				&db_pool,
+				&game,
+				platform,
+				&players_participants_leagues_telegram_chats,
+			)
+			.await
+			.is_err()
+			{
+				continue;
+			}
+
+			for telegram_chat in telegram_chats.iter().copied() {
+				let players_participants_leagues = players_participants_leagues_telegram_chats
+					.iter()
+					.filter(|(.., telegram_chats)| telegram_chats.contains(&telegram_chat))
+					.map(|(player, participant, league, ..)| {
+						((*player).clone(), (*participant).clone(), league.clone())
+					})
+					.collect::<Vec<_>>();
+				let messages = message::riot::lol::generate_messages(
+					&game,
+					platform,
+					&players_participants_leagues,
+					&config.riot_lol_message,
+				);
+				for message in messages {
+					messages_sender
+						.send((telegram_chat, message))
+						.unwrap_or_else(|err| {
+							tracing::error!(
+								error = err.to_string(),
+								"Error sending Telegram message (LOL) to channel"
+							)
+						});
+				}
+			}
 		}
+
+		tracing::error!("Riot LOL game identifier receiver has closed unexpectedly");
 	};
 
-	// TFT message generator task
-	let tft_generate_messages = async {
-		while let Some((telegram_chat, tft_game, riot_platform, tft_players_participants_leagues)) =
-			tft_games_receiver.recv().await
-		{
-			let messages = message::riot::tft::generate_message(
-				&tft_game,
-				riot_platform,
-				&tft_players_participants_leagues,
-				&config.riot_tft_message,
-			);
-			messages_sender
-				.send((telegram_chat, messages))
-				.unwrap_or_default();
+	// TFT game getter task
+	let tft_get_games = async {
+		let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
+		interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+		while let Some((game_id, platform)) = tft_game_ids_receiver.recv().await {
+			if db::riot::tft::contains_game(&db_pool, &game_id, platform)
+				.await
+				.unwrap_or(true)
+			{
+				continue;
+			}
+
+			interval.tick().await;
+			let Ok(Some(game)) =
+					api::riot::tft::get_game(&tft_api, platform, &game_id).await
+			else {
+				continue
+			};
+
+			let players_participants_telegram_chats =
+				game.info.participants.iter().filter_map(|participant| {
+					tft_players_platforms_telegram_chats
+						.iter()
+						.find(|((player, ..), ..)| player.puuid == participant.puuid)
+						.map(|((player, ..), telegram_chats)| (player, participant, telegram_chats))
+				});
+
+			let mut players_participants_leagues_telegram_chats = Vec::default();
+			for (player, participant, telegram_chats) in players_participants_telegram_chats {
+				interval.tick().await;
+				let league = api::riot::tft::get_leagues(&tft_api, platform, player)
+					.await
+					.unwrap_or_default()
+					.into_iter()
+					.find(|league| {
+						api::riot::are_same_queue_id(&league.queue_type, game.info.queue_id)
+					});
+
+				players_participants_leagues_telegram_chats.push((
+					player,
+					participant,
+					league,
+					telegram_chats,
+				));
+			}
+			let players_participants_leagues_telegram_chats =
+				players_participants_leagues_telegram_chats;
+
+			if db::riot::tft::insert_game(
+				&db_pool,
+				&game,
+				platform,
+				&players_participants_leagues_telegram_chats,
+			)
+			.await
+			.is_err()
+			{
+				continue;
+			}
+
+			for telegram_chat in telegram_chats.iter().copied() {
+				let players_participants_leagues = players_participants_leagues_telegram_chats
+					.iter()
+					.filter(|(.., telegram_chats)| telegram_chats.contains(&telegram_chat))
+					.map(|(player, participant, league, ..)| {
+						((*player).clone(), (*participant).clone(), league.clone())
+					})
+					.collect::<Vec<_>>();
+
+				let messages = message::riot::tft::generate_messages(
+					&game,
+					platform,
+					&players_participants_leagues,
+					&config.riot_tft_message,
+				);
+				for message in messages {
+					messages_sender
+						.send((telegram_chat, message))
+						.unwrap_or_else(|err| {
+							tracing::error!(
+								error = err.to_string(),
+								"Error sending Telegram message (TFT) to channel"
+							)
+						});
+				}
+			}
 		}
+
+		tracing::error!("Riot TFT game identifier receiver has closed unexpectedly");
 	};
 
 	// Telegram notifier task
@@ -377,32 +362,38 @@ async fn main() {
 			api::telegram::Limits::default(),
 		);
 
-		while let Some((telegram_chat, messages)) = messages_receiver.recv().await {
-			let mut messages_failed = Vec::default();
-			for message in messages {
-				if api::telegram::send_message(&telegram_api, telegram_chat, &message)
-					.await
-					.is_err()
-				{
-					messages_failed.push(message);
-				}
-			}
-			if !messages_failed.is_empty() {
+		while let Some((telegram_chat, message)) = messages_receiver.recv().await {
+			if api::telegram::send_message(&telegram_api, telegram_chat, &message)
+				.await
+				.is_err()
+			{
 				messages_sender
-					.send((telegram_chat, messages_failed))
-					.unwrap_or_default();
+					.send((telegram_chat, message))
+					.unwrap_or_else(|err| {
+						tracing::error!(
+							error = err.to_string(),
+							"Error resending Telegram message to channel"
+						)
+					});
 			}
 		}
+
+		tracing::error!("Telegram message receiver has closed unexpectedly");
 	};
 
 	// Run tasks
-	tokio::join!(
-		lol_get_game_ids,
-		tft_get_game_ids,
-		lol_get_games,
-		tft_get_games,
-		lol_generate_messages,
-		tft_generate_messages,
-		telegram_notify,
-	);
+	tokio::select! {
+		_ = lol_get_game_ids => {},
+		_ = tft_get_game_ids => {},
+		_ = lol_get_games => {},
+		_ = tft_get_games => {},
+		_ = telegram_notify => {},
+		signal = tokio::signal::ctrl_c() => {
+			signal.unwrap_or_else(|err| {
+				tracing::error!(error = err.to_string(), "Error handling CTRL-C signal")
+			})
+		},
+	};
+
+	tracing::debug!("Exiting");
 }

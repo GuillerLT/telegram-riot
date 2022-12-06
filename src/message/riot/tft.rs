@@ -6,7 +6,7 @@ use super::{
 	riot_config::tft::{Message, MessageTemplate},
 };
 
-pub fn generate_message(
+pub fn generate_messages(
 	game: &Game,
 	platform: Platform,
 	players_participants_leagues: &[(Player, Participant, Option<League>)],
@@ -160,7 +160,15 @@ fn substitute_common(game: &Game, platform: Platform, result: i32, message: &str
 }
 
 fn get_queue_or_mode_string(game: &Game) -> String {
-	match Queue(game.info.queue_id.try_into().unwrap_or_default()) {
+	let queue_id = u16::try_from(game.info.queue_id).unwrap_or_else(|err| {
+		tracing::error!(
+			error = err.to_string(),
+			"Error converting to queue from identifier"
+		);
+		0
+	});
+
+	match Queue(queue_id) {
 		Queue::CONVERGENCE_RANKED_TEAMFIGHT_TACTICS => String::from("RANKED"),
 		Queue::CONVERGENCE_RANKED_TEAMFIGHT_TACTICS_HYPER_ROLL_ => String::from("HYPER ROLL"),
 		Queue::CONVERGENCE_RANKED_TEAMFIGHT_TACTICS_DOUBLE_UP_WORKSHOP_ => {

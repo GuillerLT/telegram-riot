@@ -6,7 +6,7 @@ use super::{
 	riot_config::lol::{Message, MessageTemplate},
 };
 
-pub fn generate_message(
+pub fn generate_messages(
 	game: &Game,
 	platform: Platform,
 	players_participants_leagues: &[(Player, Participant, Option<League>)],
@@ -169,13 +169,14 @@ fn get_queue_or_mode_string(game: &Game) -> String {
 }
 
 fn get_damage_percentage(game: &Game, result: bool, participant: &Participant) -> f64 {
-	f64::from(participant.total_damage_dealt_to_champions) * 100.0
+	100.0 * f64::from(participant.total_damage_dealt_to_champions)
 		/ f64::from(
 			game.info
 				.participants
 				.iter()
 				.filter(|participant| participant.win == result)
 				.map(|participant| participant.total_damage_dealt_to_champions)
-				.sum::<i32>(),
+				.sum::<i32>()
+				.max(1),
 		)
 }
